@@ -363,6 +363,8 @@ class DeepOCSort(object):
         Returns the a similar array, where the last column is the object ID.
         NOTE: The number of objects returned may differ from the number of detections provided.
         """
+        if not isinstance(dets, np.ndarray):
+            dets = dets.numpy().data
         assert isinstance(dets, np.ndarray), f"Unsupported 'dets' input type '{type(dets)}', valid format is np.ndarray"
         assert isinstance(img, np.ndarray), f"Unsupported 'img' input type '{type(img)}', valid format is np.ndarray"
         assert len(dets.shape) == 2, "Unsupported 'dets' dimensions, valid number of dimensions is two"

@@ -1,0 +1,8 @@
+CREATE TABLE your_table_name (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    frame_id INT,
+    obj_id INT,
+    col3 INT,
+    col4 INT,
+    col5 INT
+);

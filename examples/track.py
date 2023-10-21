@@ -1,4 +1,6 @@
 # Mikel Broström 🔥 Yolo Tracking 🧾 AGPL-3.0 license
+import sys, os
+sys.path.append('./')
 
 import argparse
 from functools import partial
@@ -21,6 +23,35 @@ from ultralytics.utils.plotting import save_one_box
 
 from examples.utils import write_mot_results
 
+# Enable SQL
+import mysql.connector
+import time
+db_config = {
+    "host": "localhost",
+    "user": "root",
+    "password": os.getenv("MYSQL_PASSWORD"),
+    "database": os.getenv("MYSQL_DATABASE"),
+    "table": os.getenv("MYSQL_TABLE")
+}
+# Try to connect to the database
+def _connect_to_mysql(db_config):
+    try:
+        conn = mysql.connector.connect(**{
+            k:v for k,v in db_config.items() if k in [
+                "host", "user","password", "database"
+            ]})
+    except mysql.connector.Error as err:
+        print(f"{err}")
+        return False, None
+        # sys.exit(1)  # Exit the script if the connection fails
+    return conn.is_connected(), conn
+    
+mysql_connected, conn = _connect_to_mysql(db_config)
+# SQL query to insert data into the table
+insert_query = f"""
+    INSERT INTO {db_config['table_name']} (dwell, track_id, id_account, id_branch, cam_id, cam_name, count, zone)
+    VALUES (%s, %s, -1, -1, -1, -1, -1, -1)
+"""
 
 def on_predict_start(predictor, persist=False):
     """
@@ -53,7 +84,6 @@ def on_predict_start(predictor, persist=False):
         if hasattr(tracker, 'model'):
             tracker.model.warmup()
         trackers.append(tracker)
-
     predictor.trackers = trackers
 
 
@@ -63,7 +93,7 @@ def run(args):
     yolo = YOLO(
         args.yolo_model if 'yolov8' in str(args.yolo_model) else 'yolov8n.pt',
     )
-
+    # Streaming Inference Object
     results = yolo.track(
         source=args.source,
         conf=args.conf,
@@ -84,8 +114,8 @@ def run(args):
         vid_stride=args.vid_stride,
         line_width=args.line_width
     )
-
-    yolo.add_callback('on_predict_start', partial(on_predict_start, persist=True))
+    yolo.add_callback(
+        'on_predict_start', partial(on_predict_start, persist=True))
 
     if 'yolov8' not in str(args.yolo_model):
         # replace yolov8 model
@@ -96,14 +126,15 @@ def run(args):
             args=yolo.predictor.args
         )
         yolo.predictor.model = model
-
+    
     # store custom args in predictor
     yolo.predictor.custom_args = args
-
+    print(f"MOT results will be written to:\
+        {yolo.predictor.save_dir}")
     for frame_idx, r in enumerate(results):
-
-        if r.boxes.data.shape[1] == 7:
-
+        box = r.boxes.data
+        if box.shape[1] == 7:
+            # Save results here
             if yolo.predictor.source_type.webcam or args.source.endswith(VID_FORMATS):
                 p = yolo.predictor.save_dir / 'mot' / (args.source + '.txt')
                 yolo.predictor.mot_txt_path = p
@@ -112,12 +143,17 @@ def run(args):
                 yolo.predictor.mot_txt_path = p
 
             if args.save_mot:
+                print(f"Wrote results to: {yolo.predictor.mot_txt_path}")
                 write_mot_results(
                     yolo.predictor.mot_txt_path,
                     r,
                     frame_idx,
                 )
-
+            if mysql_connected:
+                # Insert data into the database
+                dwell, track_id = box[0], box[1]
+                conn.cursor().execute(insert_query, (dwell, track_id))
+                conn.commit()
             if args.save_id_crops:
                 for d in r.boxes:
                     print('args.save_id_crops', d.data)
@@ -131,19 +167,23 @@ def run(args):
                         ),
                         BGR=True
                     )
-
+        else:
+            print(f"[WARNING] box format/len > 7")
     if args.save_mot:
         print(f'MOT results saved to {yolo.predictor.mot_txt_path}')
 
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--yolo-model', type=Path, default=WEIGHTS / 'yolov8n',
-                        help='yolo model path')
-    parser.add_argument('--reid-model', type=Path, default=WEIGHTS / 'osnet_x0_25_msmt17.pt',
-                        help='reid model path')
-    parser.add_argument('--tracking-method', type=str, default='deepocsort',
-                        help='deepocsort, botsort, strongsort, ocsort, bytetrack')
+    parser.add_argument(
+        '--yolo-model', type=Path, 
+        default=WEIGHTS / 'yolov8n', help='yolo model path')
+    parser.add_argument(
+        '--reid-model', type=Path, 
+        default=WEIGHTS / 'osnet_x0_25_msmt17.pt', help='reid model path')
+    parser.add_argument(
+        '--tracking-method', type=str, 
+        default='deepocsort',help='deepocsort, botsort, strongsort, ocsort, bytetrack')
     parser.add_argument('--source', type=str, default='0',
                         help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640],

@@ -1,0 +1,1 @@
+python3 boxmot/deep/reid_export.py --include torchscript onnx openvino engine --device 0 --batch-size 30 --dynamic

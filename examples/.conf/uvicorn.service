@@ -1,0 +1,14 @@
+[Unit]
+Description=Uvicorn ASGI Server
+
+[Service]
+ExecStart=/home/ubuntu/anaconda3/envs/vision-cap/bin/gunicorn examples.serve:app -w 4 -k uvicorn.workers.UvicornWorker
+WorkingDirectory=/disk-m/vision-matt/yolo-detections-matt/yolo_tracking
+User=ubuntu
+Restart=always
+KillSignal=SIGQUIT
+Type=notify
+NotifyAccess=all
+
+[Install]
+WantedBy=multi-user.target

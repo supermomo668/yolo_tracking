@@ -24,9 +24,9 @@ This repo contains a collections of pluggable state-of-the-art multi-object trac
 |  Tracker | HOTA↑ | MOTA↑ | IDF1↑ |
 | -------- | ----- | ----- | ----- |
 | [BoTSORT](https://arxiv.org/pdf/2206.14651.pdf)    | 77.8 | 78.9 | 88.9 |
+| [DeepOCSORT](https://arxiv.org/pdf/2302.11813.pdf) | 77.4 | 78.4 | 89.0 |
+| [OCSORT](https://arxiv.org/pdf/2203.14360.pdf)     | 77.4 | 78.4 | 89.0 |
 | [HybridSORT](https://arxiv.org/pdf/2308.00783.pdf) | 77.3 | 77.9 | 88.8 |
-| [DeepOCSORT](https://arxiv.org/pdf/2302.11813.pdf) | 77.2 | 77.9 | 88.8 |
-| [OCSORT](https://arxiv.org/pdf/2203.14360.pdf)     | 76.9 | 78.0 | 88.5 |
 | [ByteTrack](https://arxiv.org/pdf/2110.06864.pdf)  | 75.6 | 74.6 | 86.0 |
 | [StrongSORT](https://arxiv.org/pdf/2202.13514.pdf) |      | | |
 | <img width=200/>                                   | <img width=100/> | <img width=100/> | <img width=100/> |
@@ -342,7 +342,19 @@ cv2.destroyAllWindows()
 </details>
 
 
-## Contact
+## Data Storage/Schema
+```
+-id_account: value coming from the camera information.
+-id_branch: value coming from the camera information.
+-cam_id: value coming from the camera information.
+-cam_name: value coming from the camera information.
 
-For Yolo tracking bugs and feature requests please visit [GitHub Issues](https://github.com/mikel-brostrom/yolo_tracking/issues).
-For business inquiries or professional support requests please send an email to: yolov5.deepsort.pytorch@gmail.com
+-dwell: time of detection for the helmet by being in the zone.
+  * yolotrack/col:0 
+-track_id: if we are not assigning any id, we can have a uuid.
+  * yolotrack/col:1
+-count: number of helmets in the view.
+  * yolotrack/col:2
+-zone: id of the zone detected.
+  * yolotrack/col:3
+```
