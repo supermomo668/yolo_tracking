@@ -8,7 +8,7 @@ gdown>=4.7.1            # google drive model download
 GitPython>=3.1.0        # track eval cloning
 lapx>=0.5.4
 loguru>=0.7.0
-numpy==1.23.1           # otherwise issues with track eval
+numpy==1.24.4           # otherwise issues with track eval
 opencv-python>=4.6.0
 pandas>=1.1.4           # export matrix
 pre-commit>=3.3.3
@@ -21,6 +21,14 @@ tensorboard>=2.13.0
 torch>=1.7.0
 torchvision>=0.8.1
 yacs>=0.1.8             # clip
+
+# Application -----------------------------------------------------------
+mysql-connector-python-rf>=2.0.0
+
+# Serving API -----------------------------------------------------------
+fastapi
+uvicorn
+
 
 # Export ----------------------------------------------------------------------
 
