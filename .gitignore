@@ -34,6 +34,9 @@ val_utils/
 *.onnx
 *.engine
 
+# data
+**/*.avi
+
 # interactive plots
 *.html
 

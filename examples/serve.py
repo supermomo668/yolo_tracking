@@ -23,6 +23,9 @@ from ultralytics.utils.plotting import save_one_box
 
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from starlette.requests import Request
 
 from examples.utils import write_mot_results
 
@@ -30,6 +33,8 @@ from examples.utils import write_mot_results
 import mysql.connector
 import datetime
 from collections import defaultdict
+
+templates = Jinja2Templates(directory="templates")
 
 # DEFINE DATABASE VARIABLES
 DB_CONFIG = {
@@ -109,7 +114,7 @@ class tracker:
         self.counter = 0
         self.args = args
         self.yolo = self.reset(args)
-        self.t_delta_store, self.t_first = defaultdict(0), defaultdict(lambda: datetime.datetime.now())
+        self.t_delta_store, self.t_first = defaultdict(lambda:0), defaultdict(lambda: datetime.datetime.now())
         
     def increment(self):
         self.counter += 1
@@ -163,8 +168,12 @@ def run(args):
     def refresh_tracker():
         return {"message": f"Tracker refreshed"}
     
+    @app.get("/docv2", response_class=HTMLResponse)
+    async def render_doc(request: Request):
+        return templates.TemplateResponse("README.html", {"request": request})
+    
     @app.post("/track")
-    async def track_objects(file: UploadFile = Form(...), timestamp: str = Form(...)):
+    async def track_objects(file: UploadFile = File(...), timestamp: str = Form(...)):
         # Streaming Inference Object
         # Read the uploaded image file into a NumPy array
         image_stream = np.frombuffer(file.file.read(), np.uint8)
@@ -203,23 +212,29 @@ def run(args):
             print(f"[Warning] Results are not streamed but has more than 1 object. For image len(results)==1.")
         # iterate over results list obj to unpack
         for frame_idx, r in enumerate(results):
-            box = r.boxes.data
-            # interative over inner results
-            if box.shape[1] == 7:
-                track_id = r.boxes.id.int().cpu().tolist()
-                boxes = r.boxes.xywh.cpu().tolist()
-                centroids = r.boxes.xywh.cpu()[:, :2].tolist()
-                conf = r.boxes.conf.float().cpu().tolist()
-                cls = r.boxes.cls.int().cpu().tolist()
-                t_deltas = track.id_t_deltas(datetime.datetime.now(), track_id)
-                resp.append({
-                    'id': track.counter,
-                    'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'track_id': track_id,
-                    'duration': t_deltas,
-                    'box': boxes, 'centroids': centroids,
-                    'labels': cls, 'confidence': conf
-                })
+            try:
+                box = r.boxes.data
+                # interative over inner results
+                if box.shape[1] == 7:
+                    track_id = r.boxes.id.int().cpu().tolist()
+                    boxes = r.boxes.xywh.cpu().tolist()
+                    centroids = r.boxes.xywh.cpu()[:, :2].tolist()
+                    conf = r.boxes.conf.float().cpu().tolist()
+                    cls = r.boxes.cls.int().cpu().tolist()
+                    t_deltas = track.id_t_deltas(
+                        datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S"), track_id)
+                    resp.append({
+                        'id': track.counter,
+                        'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'track_id': track_id,
+                        'duration': t_deltas,
+                        'box': boxes, 'centroids': centroids,
+                        'labels': cls, 'confidence': conf
+                    })
+            except Exception as e:
+                JSONResponse(
+                    content={"message": f"Error while unpacking results:{e}"}, status_code=400
+                )
             # pt 2
             if box.shape[1] == 7:
                 # Log & output results here
