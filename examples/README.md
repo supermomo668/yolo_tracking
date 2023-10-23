@@ -12,8 +12,6 @@ curl -X 'GET' \
 
 ### Usage
 
-<b> An online copy of the API documentation can be found [here](https://pleasant-large-kingfish.ngrok-free.app/doc)</b> but detailed examples are given below, which is also available [here](https://pleasant-large-kingfish.ngrok-free.app/docv2)
-
 To refresh the tracker for a different scene:
 * refresh tracker
 ```
@@ -21,29 +19,27 @@ curl -X 'GET' \
   "https://pleasant-large-kingfish.ngrok-free.app/new' \
   -H 'accept: application/json'
 ```
-To track the image continuously, call the following endpoint with your frames. 
-Note the format of the post request for the timestamp must follow `'%Y-%m-%d %H:%M:%S'`
+To track the image continuously, call the following endpoint with your frames
 * track image
 ```
 curl -X 'POST' \
   "https://pleasant-large-kingfish.ngrok-free.app/track" \
   -H 'accept: application/json' \
   -H 'Content-Type: multipart/form-data' \
-  -F 'file=@assets/images/dog_cat.jpg' \
-  -F 'timestamp="2023-10-23 14:45:30"
+  -F 'file=@assets/images/dog_cat.jpg'
 ```
 The result of track gives the following information:
 {"result":
   id<int>: Increment of the current track
   timestamp<str>: timestamp
   track_id<list>: the id of the tracked object
-  duration<list>: time spent by the object in the format of '%d%H:%M:%S'
   box<list>: box in `xywh`
   centroids<list>: centroids of the object
   labels<list>: labels of the box
   confidence<list>: confidence
 }
 ```
+
 {
   "results": [
     {
@@ -55,13 +51,6 @@ The result of track gives the following information:
         3,
         4,
         5
-      ],
-      "duration": [
-        0:00:00:01,
-        0:00:00:01,
-        0:00:00:01,
-        0:00:00:01,
-        0:00:00:01,
       ],
       "box": [
         [
@@ -135,16 +124,3 @@ The result of track gives the following information:
   ]
 }
 ```
-
-# Database Insertion
-
-The above tracking information is added and committed into the database automatically at start with the given credentials for forming the SQL connection string, namely:
-```
-MYSQL_DATABASE
-MYSQL_USER
-MYSQL_PASSWORD
-MYSQL_HOST
-MYSQL_PORT
-```
-accordingly and should be self-explanatory. It assumes that the pk for the database is auto-incremental , otherwise it should encounter duplicate object error.
-
