@@ -124,3 +124,14 @@ The result of track gives the following information:
   ]
 }
 ```
+
+# Database Insertion
+
+The above tracking information is added and committed into the database automatically at start with the given credentials for forming the SQL connection string, namely:
+```
+MYSQL_DATABASE
+MYSQL_USER
+MYSQL_PASSWORD
+MYSQL_HOST
+MYSQL_PORT
+```

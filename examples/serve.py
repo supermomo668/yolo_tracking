@@ -34,9 +34,9 @@ import mysql.connector
 import datetime
 from collections import defaultdict
 
-templates = Jinja2Templates(directory="templates")
 
 # DEFINE DATABASE VARIABLES
+
 DB_CONFIG = {
     'database': os.getenv('MYSQL_DATABASE'),
     'user': os.getenv('MYSQL_USER'),
@@ -56,13 +56,13 @@ def _connect_to_mysql(DB_CONFIG):
 
 mysql_conn, conn = _connect_to_mysql(DB_CONFIG)
 
-DB_CONFIG['table'] = os.getenv('MYSQL_TABLE')
     # SQL query to insert data into the table
 insert_query = f"""
-    INSERT INTO {DB_CONFIG['table']} (dwell, track_id, id_account, id_branch, cam_id, cam_name, count, zone)
+    INSERT INTO {os.getenv('MYSQL_TABLE')} (dwell, track_id, id_account, id_branch, cam_id, cam_name, count, zone)
     VALUES (%s, %s, -1, -1, -1, -1, %s, -1)
 """
-        
+
+# Tracking callback
 def on_predict_start(predictor, persist=False):
     """
     Initialize trackers for object tracking during prediction.
@@ -155,7 +155,8 @@ class tracker:
 from fastapi import FastAPI
 
 app = FastAPI()
-    
+templates = Jinja2Templates(directory="templates")
+
 @app.get("/")
 def read_root():
     return {"message": f"Hello, {__name__}"}
