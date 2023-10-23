@@ -21,7 +21,7 @@ from ultralytics import YOLO
 from ultralytics.data.utils import VID_FORMATS
 from ultralytics.utils.plotting import save_one_box
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 
 from examples.utils import write_mot_results
@@ -29,6 +29,7 @@ from examples.utils import write_mot_results
 # Enable SQL
 import mysql.connector
 import datetime
+from collections import defaultdict
 
 # DEFINE DATABASE VARIABLES
 DB_CONFIG = {
@@ -54,7 +55,7 @@ DB_CONFIG['table'] = os.getenv('MYSQL_TABLE')
     # SQL query to insert data into the table
 insert_query = f"""
     INSERT INTO {DB_CONFIG['table']} (dwell, track_id, id_account, id_branch, cam_id, cam_name, count, zone)
-    VALUES (%s, %s, -1, -1, -1, -1, -1, -1)
+    VALUES (%s, %s, -1, -1, -1, -1, %s, -1)
 """
         
 def on_predict_start(predictor, persist=False):
@@ -90,17 +91,38 @@ def on_predict_start(predictor, persist=False):
         trackers.append(tracker)
     predictor.trackers = trackers
 
+def format_timedelta(td: datetime.timedelta) -> str:
+    # Extract days, seconds and microseconds from timedelta
+    days = td.days
+    seconds = td.seconds
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    # Format as '%d%H:%M:%S'
+    formatted = f"{days}:{hours:02}:{minutes:02}:{seconds:02}"
+    return formatted
+
 class tracker:
+    """
+    Tracker object intend to store states
+    """
     def __init__(self, args):
         self.counter = 0
         self.args = args
         self.yolo = self.reset(args)
+        self.t_delta_store, self.t_first = defaultdict(0), defaultdict(lambda: datetime.datetime.now())
         
     def increment(self):
         self.counter += 1
         if self.counter >=1:
             self.yolo.predictor.custom_args = self.args
         return self.counter
+    
+    def id_t_deltas(self, cur_time, ids):
+        t_time = []
+        for id in ids:
+            self.t_delta_store[id] += cur_time - self.t_delta_store[id]
+            t_time.append(self.t_delta_store[id])
+        return t_time
 
     def reset(self, args):
         self.counter = 0
@@ -120,6 +142,7 @@ class tracker:
             'on_predict_start', 
             partial(on_predict_start, persist=True))
         return self.yolo
+    
     @property
     def model(self):
         return self.yolo
@@ -141,7 +164,7 @@ def run(args):
         return {"message": f"Tracker refreshed"}
     
     @app.post("/track")
-    async def track_objects(file: UploadFile = File(...)):
+    async def track_objects(file: UploadFile = Form(...), timestamp: str = Form(...)):
         # Streaming Inference Object
         # Read the uploaded image file into a NumPy array
         image_stream = np.frombuffer(file.file.read(), np.uint8)
@@ -178,23 +201,28 @@ def run(args):
         resp = []
         if hasattr(results, 'len') and len(results) > 1:
             print(f"[Warning] Results are not streamed but has more than 1 object. For image len(results)==1.")
+        # iterate over results list obj to unpack
         for frame_idx, r in enumerate(results):
             box = r.boxes.data
+            # interative over inner results
             if box.shape[1] == 7:
                 track_id = r.boxes.id.int().cpu().tolist()
                 boxes = r.boxes.xywh.cpu().tolist()
                 centroids = r.boxes.xywh.cpu()[:, :2].tolist()
                 conf = r.boxes.conf.float().cpu().tolist()
                 cls = r.boxes.cls.int().cpu().tolist()
+                t_deltas = track.id_t_deltas(datetime.datetime.now(), track_id)
                 resp.append({
-                    'id': track.counter, 
+                    'id': track.counter,
                     'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'track_id': track_id, 
+                    'track_id': track_id,
+                    'duration': t_deltas,
                     'box': boxes, 'centroids': centroids,
                     'labels': cls, 'confidence': conf
                 })
+            # pt 2
             if box.shape[1] == 7:
-                # Save results here
+                # Log & output results here
                 if yolo.predictor.source_type.webcam or args.source.endswith(VID_FORMATS):
                     p = yolo.predictor.save_dir / 'mot' / (args.source + '.txt')
                     yolo.predictor.mot_txt_path = p
@@ -209,11 +237,11 @@ def run(args):
                         r,
                         frame_idx,
                     )
-                dwell, track_id = box[0], box[1]
                 if mysql_conn:
                     # Insert data into the database
-                    conn.cursor().execute(insert_query, (dwell, track_id))
-                    conn.commit()
+                    for d , tid in zip(t_deltas, track_id):
+                        conn.cursor().execute(insert_query, (d, tid, np.unique(tid)))
+                        conn.commit()
                 if args.save_id_crops:
                     for d in r.boxes:
                         print('args.save_id_crops', d.data)

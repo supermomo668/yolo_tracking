@@ -21,6 +21,7 @@ tensorboard>=2.13.0
 torch>=1.7.0
 torchvision>=0.8.1
 yacs>=0.1.8             # clip
+boxmot
 
 # Application -----------------------------------------------------------
 mysql-connector-python-rf>=2.0.0

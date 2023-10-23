@@ -33,6 +33,7 @@ The result of track gives the following information:
   id<int>: Increment of the current track
   timestamp<str>: timestamp
   track_id<list>: the id of the tracked object
+  duration<list>: time spent by the object in the format of '%d%H:%M:%S'
   box<list>: box in `xywh`
   centroids<list>: centroids of the object
   labels<list>: labels of the box
@@ -51,6 +52,13 @@ The result of track gives the following information:
         3,
         4,
         5
+      ],
+      "duration": [
+        0:00:00:01,
+        0:00:00:01,
+        0:00:00:01,
+        0:00:00:01,
+        0:00:00:01,
       ],
       "box": [
         [
@@ -124,3 +132,7 @@ The result of track gives the following information:
   ]
 }
 ```
+
+# Database Insertion
+
+The above tracking information is added and committed into the database automatically at start with 
