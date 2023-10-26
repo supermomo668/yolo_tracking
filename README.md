@@ -5,5 +5,5 @@
 * [Local](examples/README.md)
 * Online:
   * The host may potentially change for this one, but if the server is up it will be automatically available at:
-    * [/doc](https://pleasant-large-kingfish.ngrok-free.app/doc)
+    * [/doc](https://pleasant-large-kingfish.ngrok-free.app/docs)
     * [/docv2](https://pleasant-large-kingfish.ngrok-free.app/docv2)
